@@ -98,6 +98,19 @@ context "Resque::Worker" do
 
     assert_equal %w( jobs high critical blahblah ).sort, processed_queues
   end
+  
+  test "handles * as non-first queue provided" do
+    Resque::Job.create(:high, GoodJob)
+    Resque::Job.create(:critical, GoodJob)
+    Resque::Job.create(:blahblah, GoodJob)
+
+    worker = Resque::Worker.new(:critical, "*")
+
+    worker.work(0)
+    assert_equal 0, Resque.size(:high)
+    assert_equal 0, Resque.size(:critical)
+    assert_equal 0, Resque.size(:blahblah)    
+  end
 
   test "has a unique id" do
     assert_equal "#{`hostname`.chomp}:#{$$}:jobs", @worker.to_s
