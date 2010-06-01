@@ -277,7 +277,13 @@ queues created on the fly, you can use a splat:
 
     $ QUEUE=* rake resque:work
 
-Queues will be processed in alphabetical order.
+You can also put a splat after a prefix to include only matching
+queues, which can be useful to namespace your queues within a single
+redis instance.
+
+    $ QUEUE=staging_* rake resque:work
+
+Queues will be expanded in alphabetical order.
 
 
 ### Running Multiple Workers

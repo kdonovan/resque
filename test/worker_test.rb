@@ -112,6 +112,42 @@ context "Resque::Worker" do
     assert_equal 0, Resque.size(:blahblah)    
   end
 
+  test "accepts splats with queue names" do
+    Resque::Job.create(:system_mailer, GoodJob)
+    Resque::Job.create(:production_high, GoodJob)
+    Resque::Job.create(:production_critical, GoodJob)
+    Resque::Job.create(:staging_high, GoodJob)
+    Resque::Job.create(:staging_critical, GoodJob)
+    Resque::Job.create(:not_staging_test, GoodJob)
+
+    worker = Resque::Worker.new(:system_mailer, "staging_*")
+
+    worker.work(0)
+    assert_equal 0, Resque.size(:system_mailer)
+    assert_equal 1, Resque.size(:production_high)
+    assert_equal 1, Resque.size(:production_critical)
+    assert_equal 1, Resque.size(:not_staging_test)
+    assert_equal 0, Resque.size(:staging_high)
+    assert_equal 0, Resque.size(:staging_critical)
+  end
+
+  test "expands queues with in-name splats in alphabetical order" do
+    Resque::Job.create(:not_run, GoodJob)
+    Resque::Job.create(:staging_first, GoodJob)
+    Resque::Job.create(:staging_last, GoodJob)
+    Resque::Job.create(:last, GoodJob)
+    Resque::Job.create(:first, GoodJob)
+
+    worker = Resque::Worker.new('first', "staging_*", 'last')
+    processed_queues = []
+
+    worker.work(0) do |job|
+      processed_queues << job.queue
+    end
+
+    assert_equal %w( first staging_first staging_last last ), processed_queues
+  end
+
   test "has a unique id" do
     assert_equal "#{`hostname`.chomp}:#{$$}:jobs", @worker.to_s
   end

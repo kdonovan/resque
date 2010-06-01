@@ -182,10 +182,20 @@ module Resque
 
     # Returns a list of queues to use when searching for a job.
     # A splat ("*") means you want every queue (in alpha order) - this
-    # can be useful for dynamically adding new queues.
+    # can be useful for dynamically adding new queues. A splat with a
+    # prefix ("staging_*") will be dynamically expanded to include 
+    # all matching queues, sorted alphabetically. This can be useful for
+    # limiting a worker to only running queues in specified environment.
     def queues
-      return Resque.queues.sort if @queues.any?{|q| q == '*'}
-      @queues
+      return Resque.queues.sort if @queues.any?{|queue| queue == '*'}
+
+      @queues.map do |queue|
+        queue_name = queue.to_s
+        if queue_name.include?('*') && prefix = queue_name.split('*').first
+          Resque.queues.select {|q| q.to_s.start_with?(prefix) }.sort
+        else queue
+        end
+      end.flatten
     end
 
     # Not every platform supports fork. Here we do our magic to
